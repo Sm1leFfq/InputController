@@ -98,6 +98,7 @@ setInterval(interact, 1000 / 60);
 
 class KeyboardPlugin {
     constructor() {
+        this.target = null;
         this.pressedKeyboardKeys = []
 
         this._keydownHandler = null;
@@ -113,7 +114,7 @@ class KeyboardPlugin {
                     if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
 
                     if (action.enabled && !action.active) {
-                        target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
+                        this.target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
                     }
 
                     action.active = true;
@@ -141,7 +142,7 @@ class KeyboardPlugin {
                         action.active = false;
 
                     if (action.enabled && !action.active) {
-                        target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
+                        this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
                     }
                 }
             }
@@ -152,8 +153,10 @@ class KeyboardPlugin {
         this._keydownHandler = (event) => { this._keydown(event, actions) }
         this._keyupHandler = (event) => { this._keyup(event, actions) }
 
-        target.addEventListener("keydown", this._keydownHandler);
-        target.addEventListener("keyup", this._keyupHandler);
+        this.target = target;
+
+        this.target.addEventListener("keydown", this._keydownHandler);
+        this.target.addEventListener("keyup", this._keyupHandler);
     }
 
     unbindControlInput() {
