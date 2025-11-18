@@ -17,6 +17,12 @@ class InputController {
 
         window.addEventListener("focus", () => { this.focused = true; })
         window.addEventListener("blur", () => { this.focused = false; })
+
+        setInterval(() => {
+            if (!this.enabled) {
+                this._deactivateAllActions();
+            }
+        }, 100)
     }
 
     ACTION_ACTIVATED = "input-controller:action-activated";
@@ -66,6 +72,15 @@ class InputController {
         }
     }
 
+    _deactivateAllActions() {
+        for (const actionName in this.actions) {
+            if (this.actions[actionName].active) {
+                this.actions[actionName].active = false;
+                target.dispatchEvent(new CustomEvent(this.ACTION_DEACTIVATED, { detail: actionName }))
+            }
+        }
+    }
+
     bindActions(actionsToBind) {
         this.actions = {...this.actions, ...actionsToBind };
 
@@ -106,13 +121,6 @@ class InputController {
     detach() {
         this.target.removeEventListener("keydown", this._keydownBindedHandler);
         this.target.removeEventListener("keyup", this._keyupBindedHandler);
-
-        for (const actionName in this.actions) {
-            if (this.actions[actionName].active) {
-                this.actions[actionName].active = false;
-                target.dispatchEvent(new CustomEvent(this.ACTION_DEACTIVATED, { detail: actionName }))
-            }
-        }
 
         this.target = null;
         this.enabled = false;
