@@ -27,7 +27,7 @@ class InputController {
             const key = event.keyCode;
             for (const actionName in this.actions) {
                 const action = this.actions[actionName];
-                if (action.keys.includes(key)) {
+                if (action.keys.includes(key) && action.enabled) {
                     if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
 
                     if (action.enabled && !action.active) {
@@ -46,7 +46,7 @@ class InputController {
             for (const actionName in this.actions) {
                 const action = this.actions[actionName];
 
-                if (action.keys.includes(key)) {
+                if (action.keys.includes(key) && action.enabled) {
                     this.pressedKeyboardKeys.splice(this.pressedKeyboardKeys.indexOf(key), 1);
 
                     let allKeysUp = true;
@@ -89,6 +89,7 @@ class InputController {
     disableAction(actionName) {
         if (this.actions) {
             this.actions[actionName].enabled = false;
+            this.actions[actionName].active = false;
         }
     }
 
