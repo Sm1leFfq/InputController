@@ -53,11 +53,7 @@ class InputController {
                 if (action.keys.includes(key) && action.enabled) {
                     if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
 
-                    if (action.enabled && !action.active) {
-                        target.dispatchEvent(new CustomEvent(this.ACTION_ACTIVATED, { detail: actionName }))
-                    }
-
-                    action.active = true;
+                    this.updateActionsState(actionName, "keyboard", true);
                 }
             }
         }
@@ -79,11 +75,7 @@ class InputController {
                     }
 
                     if (allKeysUp)
-                        action.active = false;
-
-                    if (action.enabled && !action.active) {
-                        target.dispatchEvent(new CustomEvent(this.ACTION_DEACTIVATED, { detail: actionName }))
-                    }
+                        this.updateActionsState(actionName, "keyboard", false);
                 }
             }
         }
@@ -99,6 +91,7 @@ class InputController {
     }
 
     _bindPluginInputs() {
+        this._unbindPluginInputs();
         for (const plugin of this.plugins) {
             plugin.controlInput(this.target, this.actions);
         }
@@ -124,7 +117,6 @@ class InputController {
             action.activeBy = [];
         }
 
-        this._unbindPluginInputs();
         this._bindPluginInputs();
     }
 
@@ -138,6 +130,7 @@ class InputController {
         if (this.actions) {
             this.actions[actionName].enabled = false;
             this.actions[actionName].active = false;
+            this.actions[actionName].activeBy = [];
         }
     }
 
@@ -148,14 +141,13 @@ class InputController {
 
         this._bindPluginInputs();
 
-        // this.target.addEventListener("keydown", this._keydownBindedHandler);
-
-        // this.target.addEventListener("keyup", this._keyupBindedHandler);
+        this.target.addEventListener("keydown", this._keydownBindedHandler);
+        this.target.addEventListener("keyup", this._keyupBindedHandler);
     }
 
     detach() {
-        // this.target.removeEventListener("keydown", this._keydownBindedHandler);
-        // this.target.removeEventListener("keyup", this._keyupBindedHandler);
+        this.target.removeEventListener("keydown", this._keydownBindedHandler);
+        this.target.removeEventListener("keyup", this._keyupBindedHandler);
 
         this._unbindPluginInputs();
 
@@ -201,7 +193,6 @@ class InputController {
                     this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
                 }
             }
-
         }
     }
 }

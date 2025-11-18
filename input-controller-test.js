@@ -220,8 +220,6 @@ class MousePlugin {
     };
 }
 
-const keyboard = new KeyboardPlugin();
 const mouse = new MousePlugin();
 
-controller.addPlugin(keyboard);
 controller.addPlugin(mouse);
