@@ -20,8 +20,13 @@ class InputController {
         window.addEventListener("blur", () => { this.focused = false; })
     }
 
-    ACTION_ACTIVATED = "input-controller:action-activated";
-    ACTION_DEACTIVATED = "input-controller:action-deactivated";
+    get ACTION_ACTIVATED() {
+        return "input-controller:action-activated";
+    }
+
+    get ACTION_DEACTIVATED() {
+        return "input-controller:action-deactivated";
+    }
 
     get enabled() {
         return this._enabled;
@@ -116,10 +121,11 @@ class InputController {
             } else {
                 action.enabled = true;
             }
+            action.activeBy = null;
         }
 
         this._unbindPluginInputs();
-        this._bindPluginInputs(this.target, this.actions);
+        this._bindPluginInputs();
     }
 
     enableAction(actionName) {
@@ -142,14 +148,14 @@ class InputController {
 
         this._bindPluginInputs();
 
-        this.target.addEventListener("keydown", this._keydownBindedHandler);
+        // this.target.addEventListener("keydown", this._keydownBindedHandler);
 
-        this.target.addEventListener("keyup", this._keyupBindedHandler);
+        // this.target.addEventListener("keyup", this._keyupBindedHandler);
     }
 
     detach() {
-        this.target.removeEventListener("keydown", this._keydownBindedHandler);
-        this.target.removeEventListener("keyup", this._keyupBindedHandler);
+        // this.target.removeEventListener("keydown", this._keydownBindedHandler);
+        // this.target.removeEventListener("keyup", this._keyupBindedHandler);
 
         this._unbindPluginInputs();
 
@@ -169,7 +175,26 @@ class InputController {
     }
 
     addPlugin(plugin) {
-        this.plugins.push(plugin)
-        this._bindPluginInputs();
+        this.plugins.push(plugin);
+    }
+
+    updateActionsState(actionName, pluginName, actionState) {
+        const action = this.actions[actionName];
+
+        if (!action.active && actionState) {
+            action.activeBy = pluginName;
+            action.active = true;
+            if (action.enabled) {
+                this.target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
+            }
+        } else {
+            if (action.activeBy === pluginName && !actionState) {
+                action.activeBy = null;
+                action.active = false;
+                if (action.enabled) {
+                    this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
+                }
+            }
+        }
     }
 }
