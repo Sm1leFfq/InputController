@@ -23,26 +23,25 @@ class InputController {
     ACTION_DEACTIVATED = "input-controller:action-deactivated";
 
     _keydownHandler(event) {
-        if (this.enabled) {
+        if (this.enabled && this.focused) {
             const key = event.keyCode;
             for (const actionName in this.actions) {
                 const action = this.actions[actionName];
-                if (action.keys.includes(key) && !action.active) {
-                    action.active = true;
+                if (action.keys.includes(key)) {
+                    if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
 
-                    this.pressedKeyboardKeys.push(key);
-
-                    if (action.enabled) {
+                    if (action.enabled && !action.active) {
                         target.dispatchEvent(new CustomEvent(this.ACTION_ACTIVATED, { detail: actionName }))
                     }
+
+                    action.active = true;
                 }
             }
         }
-
     }
 
     _keyupHandler(event) {
-        if (this.enabled) {
+        if (this.enabled && this.focused) {
             const key = event.keyCode;
             for (const actionName in this.actions) {
                 const action = this.actions[actionName];
@@ -50,9 +49,16 @@ class InputController {
                 if (action.keys.includes(key)) {
                     this.pressedKeyboardKeys.splice(this.pressedKeyboardKeys.indexOf(key), 1);
 
-                    action.active = false;
+                    let allKeysUp = true;
 
-                    if (action.enabled) {
+                    for (const key of action.keys) {
+                        if (this.pressedKeyboardKeys.includes(key)) allKeysUp = false;
+                    }
+
+                    if (allKeysUp)
+                        action.active = false;
+
+                    if (action.enabled && !action.active) {
                         target.dispatchEvent(new CustomEvent(this.ACTION_DEACTIVATED, { detail: actionName }))
                     }
                 }
