@@ -1,8 +1,8 @@
 class InputController {
     constructor(actionsToBind = null, target = null) {
         this.actions = {};
-        this.enabled = true;
-        this.focused = true;
+        this._enabled = true
+        this._focused = true;
 
         this.pressedKeyboardKeys = [];
 
@@ -17,16 +17,27 @@ class InputController {
 
         window.addEventListener("focus", () => { this.focused = true; })
         window.addEventListener("blur", () => { this.focused = false; })
-
-        setInterval(() => {
-            if (!this.enabled) {
-                this._deactivateAllActions();
-            }
-        }, 100)
     }
 
     ACTION_ACTIVATED = "input-controller:action-activated";
     ACTION_DEACTIVATED = "input-controller:action-deactivated";
+
+    get enabled() {
+        return this._enabled;
+    }
+
+    set enabled(val) {
+        this._deactivateAllActions();
+        this._enabled = val;
+    }
+
+    get focused() {
+        return this._focused;
+    }
+
+    set focused(val) {
+        this._focused = val;
+    }
 
     _keydownHandler(event) {
         if (this.enabled && this.focused) {
