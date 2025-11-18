@@ -95,3 +95,73 @@ function interact() {
 }
 
 setInterval(interact, 1000 / 60);
+
+class KeyboardPlugin {
+    constructor() {
+        this.pressedKeyboardKeys = []
+
+        this._keydownHandler = null;
+        this._keyupHandler = null;
+    }
+
+    _keydown(event, actions) {
+        if (controller.enabled && controller.focused) {
+            const key = event.keyCode;
+            for (const actionName in actions) {
+                const action = actions[actionName];
+                if (action.keys.includes(key) && action.enabled) {
+                    if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
+
+                    if (action.enabled && !action.active) {
+                        target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
+                    }
+
+                    action.active = true;
+                }
+            }
+        }
+    }
+
+    _keyup(event, actions) {
+        if (controller.enabled && controller.focused) {
+            const key = event.keyCode;
+            for (const actionName in actions) {
+                const action = actions[actionName];
+
+                if (action.keys.includes(key) && action.enabled) {
+                    this.pressedKeyboardKeys.splice(this.pressedKeyboardKeys.indexOf(key), 1);
+
+                    let allKeysUp = true;
+
+                    for (const key of action.keys) {
+                        if (this.pressedKeyboardKeys.includes(key)) allKeysUp = false;
+                    }
+
+                    if (allKeysUp)
+                        action.active = false;
+
+                    if (action.enabled && !action.active) {
+                        target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
+                    }
+                }
+            }
+        }
+    }
+
+    controlInput(target, actions) {
+        this._keydownHandler = (event) => { this._keydown(event, actions) }
+        this._keyupHandler = (event) => { this._keyup(event, actions) }
+
+        target.addEventListener("keydown", this._keydownHandler);
+        target.addEventListener("keyup", this._keyupHandler);
+    }
+
+    unbindControlInput() {
+        target.removeEventListener("keydown", this._keydownHandler);
+        target.removeEventListener("keyup", this._keyupHandler);
+    }
+}
+
+const plugin = new KeyboardPlugin();
+
+// controller.addPlugin(plugin);

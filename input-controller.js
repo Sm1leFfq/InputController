@@ -1,5 +1,6 @@
 class InputController {
     constructor(actionsToBind = null, target = null) {
+        this.plugins = [];
         this.actions = {};
         this._enabled = true
         this._focused = true;
@@ -92,6 +93,18 @@ class InputController {
         }
     }
 
+    _bindPluginInputs() {
+        for (const plugin of this.plugins) {
+            plugin.controlInput(this.target, this.actions);
+        }
+    }
+
+    _unbindPluginInputs() {
+        for (const plugin of this.plugins) {
+            plugin.unbindControlInput();
+        }
+    }
+
     bindActions(actionsToBind) {
         this.actions = {...this.actions, ...actionsToBind };
 
@@ -104,6 +117,9 @@ class InputController {
                 action.enabled = true;
             }
         }
+
+        this._unbindPluginInputs();
+        this._bindPluginInputs(this.target, this.actions);
     }
 
     enableAction(actionName) {
@@ -124,6 +140,8 @@ class InputController {
         this.focused = true;
         this.target = target;
 
+        this._bindPluginInputs();
+
         this.target.addEventListener("keydown", this._keydownBindedHandler);
 
         this.target.addEventListener("keyup", this._keyupBindedHandler);
@@ -132,6 +150,8 @@ class InputController {
     detach() {
         this.target.removeEventListener("keydown", this._keydownBindedHandler);
         this.target.removeEventListener("keyup", this._keyupBindedHandler);
+
+        this._unbindPluginInputs();
 
         this.target = null;
         this.enabled = false;
@@ -146,5 +166,10 @@ class InputController {
 
     isKeyPressed(keyCode) {
         return this.pressedKeyboardKeys.includes(keyCode);
+    }
+
+    addPlugin(plugin) {
+        this.plugins.push(plugin)
+        this._bindPluginInputs();
     }
 }
