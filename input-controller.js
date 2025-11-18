@@ -121,7 +121,7 @@ class InputController {
             } else {
                 action.enabled = true;
             }
-            action.activeBy = null;
+            action.activeBy = [];
         }
 
         this._unbindPluginInputs();
@@ -181,20 +181,27 @@ class InputController {
     updateActionsState(actionName, pluginName, actionState) {
         const action = this.actions[actionName];
 
-        if (!action.active && actionState) {
-            action.activeBy = pluginName;
-            action.active = true;
-            if (action.enabled) {
-                this.target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
+        if (actionState) {
+            if (!action.activeBy.includes(pluginName)) {
+                action.activeBy.push(pluginName);
+
+                if (action.enabled && !action.active) {
+                    this.target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
+                }
+
+                action.active = true;
             }
         } else {
-            if (action.activeBy === pluginName && !actionState) {
-                action.activeBy = null;
+            action.activeBy.splice(action.activeBy.indexOf(pluginName), 1)
+
+            if (action.activeBy.length === 0) {
                 action.active = false;
+
                 if (action.enabled) {
                     this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
                 }
             }
+
         }
     }
 }
