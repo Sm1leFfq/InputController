@@ -100,46 +100,59 @@ class KeyboardPlugin {
     constructor() {
         this.name = "keyboard";
         this.target = null;
-        this.pressedKeyboardKeys = []
+        this.pressedKeyboardKeys = [];
+        this.eventName = "updateActionStateRequest";
 
         this._keydownHandler = null;
         this._keyupHandler = null;
+        this._controlsBinded = false;
     }
 
     _keydown(event, actions) {
-        if (controller.enabled && controller.focused) {
-            const key = event.keyCode;
-            for (const actionName in actions) {
-                const action = actions[actionName];
-                if (action.keys.includes(key) && action.enabled) {
-                    if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
+        const key = event.keyCode;
+        for (const actionName in actions) {
+            const action = actions[actionName];
+            if (action.keys.includes(key) && action.enabled) {
+                if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
 
-                    controller.updateActionsState(actionName, this.name, true);
-                }
+                this.target.dispatchEvent(new CustomEvent(this.eventName, {
+                    detail: {
+                        actionName,
+                        pluginName: this.name,
+                        actionState: true
+                    }
+                }))
             }
         }
+
     }
 
     _keyup(event, actions) {
-        if (controller.enabled && controller.focused) {
-            const key = event.keyCode;
-            for (const actionName in actions) {
-                const action = actions[actionName];
+        const key = event.keyCode;
+        for (const actionName in actions) {
+            const action = actions[actionName];
 
-                if (action.keys.includes(key) && action.enabled) {
-                    this.pressedKeyboardKeys.splice(this.pressedKeyboardKeys.indexOf(key), 1);
+            if (action.keys.includes(key) && action.enabled) {
+                this.pressedKeyboardKeys.splice(this.pressedKeyboardKeys.indexOf(key), 1);
 
-                    let allKeysUp = true;
+                let allKeysUp = true;
 
-                    for (const key of action.keys) {
-                        if (this.pressedKeyboardKeys.includes(key)) allKeysUp = false;
-                    }
-
-                    if (allKeysUp)
-                        controller.updateActionsState(actionName, this.name, false);
+                for (const key of action.keys) {
+                    if (this.pressedKeyboardKeys.includes(key)) allKeysUp = false;
                 }
+
+                if (allKeysUp)
+                    this.target.dispatchEvent(new CustomEvent(this.eventName, {
+                        detail: {
+                            actionName,
+                            pluginName: this.name,
+                            actionState: false
+                        }
+                    }))
+
             }
         }
+
     }
 
     controlInput(target, actions) {
@@ -150,11 +163,17 @@ class KeyboardPlugin {
 
         this.target.addEventListener("keydown", this._keydownHandler);
         this.target.addEventListener("keyup", this._keyupHandler);
+
+        this._controlsBinded = true;
     }
 
     unbindControlInput() {
-        this.target.removeEventListener("keydown", this._keydownHandler);
-        this.target.removeEventListener("keyup", this._keyupHandler);
+        if (this._controlsBinded) {
+            this.target.removeEventListener("keydown", this._keydownHandler);
+            this.target.removeEventListener("keyup", this._keyupHandler);
+
+            this._controlsBinded = false;
+        }
     }
 }
 
@@ -162,46 +181,58 @@ class MousePlugin {
     constructor() {
         this.name = "mouse";
         this.target = null;
+        this.eventName = "updateActionStateRequest";
 
         this.pressedMouseKeys = [];
 
         this._mousedownHandler = null;
         this._mouseupHandler = null;
+        this._controlsBinded = false;
     }
 
     _mousedown(event, actions) {
-        if (controller.enabled && controller.focused) {
-            const key = event.button;
-            for (const actionName in actions) {
-                const action = actions[actionName];
-                if (action.keys.includes(key) && action.enabled) {
-                    if (!this.pressedMouseKeys.includes(key)) this.pressedMouseKeys.push(key);
+        const key = event.button;
+        for (const actionName in actions) {
+            const action = actions[actionName];
+            if (action.keys.includes(key) && action.enabled) {
+                if (!this.pressedMouseKeys.includes(key)) this.pressedMouseKeys.push(key);
 
-                    controller.updateActionsState(actionName, this.name, true);
-                }
+                this.target.dispatchEvent(new CustomEvent(this.eventName, {
+                    detail: {
+                        actionName,
+                        pluginName: this.name,
+                        actionState: true
+                    }
+                }))
             }
+
         }
     }
 
     _mouseup(event, actions) {
-        if (controller.enabled && controller.focused) {
-            const key = event.button;
-            for (const actionName in actions) {
-                const action = actions[actionName];
+        const key = event.button;
+        for (const actionName in actions) {
+            const action = actions[actionName];
 
-                if (action.keys.includes(key) && action.enabled) {
-                    this.pressedMouseKeys.splice(this.pressedMouseKeys.indexOf(key), 1);
+            if (action.keys.includes(key) && action.enabled) {
+                this.pressedMouseKeys.splice(this.pressedMouseKeys.indexOf(key), 1);
 
-                    let allKeysUp = true;
+                let allKeysUp = true;
 
-                    for (const key of action.keys) {
-                        if (this.pressedMouseKeys.includes(key)) allKeysUp = false;
-                    }
-
-                    if (allKeysUp)
-                        controller.updateActionsState(actionName, this.name, false);
+                for (const key of action.keys) {
+                    if (this.pressedMouseKeys.includes(key)) allKeysUp = false;
                 }
+
+                if (allKeysUp)
+                    this.target.dispatchEvent(new CustomEvent(this.eventName, {
+                        detail: {
+                            actionName,
+                            pluginName: this.name,
+                            actionState: false
+                        }
+                    }))
             }
+
         }
     }
 
@@ -213,13 +244,22 @@ class MousePlugin {
 
         this.target.addEventListener("mousedown", this._mousedownHandler);
         this.target.addEventListener("mouseup", this._mouseupHandler);
+
+        this._controlsBinded = true;
     };
 
     unbindControlInput() {
+        if (this._controlsBinded) {
+            this.target.removeEventListener("mousedown", this._mousedownHandler);
+            this.target.removeEventListener("mouseup", this._mouseupHandler);
 
+            this._controlsBinded = false;
+        }
     };
 }
 
+const keyboard = new KeyboardPlugin();
 const mouse = new MousePlugin();
 
+controller.addPlugin(keyboard);
 controller.addPlugin(mouse);

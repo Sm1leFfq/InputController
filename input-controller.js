@@ -2,13 +2,12 @@ class InputController {
     constructor(actionsToBind = null, target = null) {
         this.plugins = [];
         this.actions = {};
-        this._enabled = true
+        this._enabled = false
         this._focused = true;
 
-        this.pressedKeyboardKeys = [];
-
-        this._keydownBindedHandler = this._keydownHandler.bind(this);
-        this._keyupBindedHandler = this._keyupHandler.bind(this);
+        this._pluginEventsHandler = (event) => {
+            this._updateActionsState(event.detail.actionName, event.detail.pluginName, event.detail.actionState);
+        };
 
         if (actionsToBind) this.bindActions(actionsToBind);
 
@@ -42,65 +41,77 @@ class InputController {
     }
 
     set focused(val) {
+        this._deactivateAllActions();
         this._focused = val;
-    }
-
-    _keydownHandler(event) {
-        if (this.enabled && this.focused) {
-            const key = event.keyCode;
-            for (const actionName in this.actions) {
-                const action = this.actions[actionName];
-                if (action.keys.includes(key) && action.enabled) {
-                    if (!this.pressedKeyboardKeys.includes(key)) this.pressedKeyboardKeys.push(key);
-
-                    this.updateActionsState(actionName, "keyboard", true);
-                }
-            }
-        }
-    }
-
-    _keyupHandler(event) {
-        if (this.enabled && this.focused) {
-            const key = event.keyCode;
-            for (const actionName in this.actions) {
-                const action = this.actions[actionName];
-
-                if (action.keys.includes(key) && action.enabled) {
-                    this.pressedKeyboardKeys.splice(this.pressedKeyboardKeys.indexOf(key), 1);
-
-                    let allKeysUp = true;
-
-                    for (const key of action.keys) {
-                        if (this.pressedKeyboardKeys.includes(key)) allKeysUp = false;
-                    }
-
-                    if (allKeysUp)
-                        this.updateActionsState(actionName, "keyboard", false);
-                }
-            }
-        }
     }
 
     _deactivateAllActions() {
         for (const actionName in this.actions) {
             if (this.actions[actionName].active) {
                 this.actions[actionName].active = false;
-                target.dispatchEvent(new CustomEvent(this.ACTION_DEACTIVATED, { detail: actionName }))
+                this.actions[actionName].activeBy = [];
+                target.dispatchEvent(new CustomEvent(this.ACTION_DEACTIVATED, { detail: actionName }));
             }
         }
     }
 
-    _bindPluginInputs() {
-        this._unbindPluginInputs();
-        for (const plugin of this.plugins) {
-            plugin.controlInput(this.target, this.actions);
+    _bindPluginsInputs() {
+        if (this.target) {
+            for (const plugin of this.plugins) {
+                if (!plugin.binded) {
+                    plugin.instance.controlInput(this.target, this.actions);
+                } else {
+                    plugin.instance.unbindControlInput();
+                    plugin.instance.controlInput(this.target, this.actions);
+                }
+                plugin.binded = true;
+            }
+
+            this.target.addEventListener("updateActionStateRequest", this._pluginEventsHandler)
         }
     }
 
-    _unbindPluginInputs() {
-        for (const plugin of this.plugins) {
-            plugin.unbindControlInput();
+    _unbindPluginsInputs() {
+        if (this.target) {
+            for (const plugin of this.plugins) {
+                if (plugin.binded) {
+                    plugin.instance.unbindControlInput();
+                    plugin.binded = false;
+                }
+            }
+
+            this.target.removeEventListener("updateActionStateRequest", this._pluginEventsHandler)
         }
+    }
+
+    _updateActionsState(actionName, pluginName, actionState) {
+        const action = this.actions[actionName];
+
+        if (this.enabled && this.focused) {
+            if (actionState) {
+                if (!action.activeBy.includes(pluginName)) {
+                    if (action.enabled) {
+                        action.activeBy.push(pluginName);
+                        if (!action.active) {
+                            this.target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }));
+                        }
+
+                        action.active = true;
+                    }
+                }
+            } else {
+                action.activeBy.splice(action.activeBy.indexOf(pluginName), 1)
+
+                if (action.activeBy.length === 0) {
+                    action.active = false;
+
+                    if (action.enabled) {
+                        this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }));
+                    }
+                }
+            }
+        }
+
     }
 
     bindActions(actionsToBind) {
@@ -117,7 +128,7 @@ class InputController {
             action.activeBy = [];
         }
 
-        this._bindPluginInputs();
+        this._bindPluginsInputs();
     }
 
     enableAction(actionName) {
@@ -127,10 +138,12 @@ class InputController {
     }
 
     disableAction(actionName) {
-        if (this.actions) {
+        if (this.actions[actionName]) {
             this.actions[actionName].enabled = false;
             this.actions[actionName].active = false;
             this.actions[actionName].activeBy = [];
+
+            this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
         }
     }
 
@@ -139,17 +152,11 @@ class InputController {
         this.focused = true;
         this.target = target;
 
-        this._bindPluginInputs();
-
-        this.target.addEventListener("keydown", this._keydownBindedHandler);
-        this.target.addEventListener("keyup", this._keyupBindedHandler);
+        this._bindPluginsInputs();
     }
 
     detach() {
-        this.target.removeEventListener("keydown", this._keydownBindedHandler);
-        this.target.removeEventListener("keyup", this._keyupBindedHandler);
-
-        this._unbindPluginInputs();
+        this._unbindPluginsInputs();
 
         this.target = null;
         this.enabled = false;
@@ -162,37 +169,8 @@ class InputController {
         }
     }
 
-    isKeyPressed(keyCode) {
-        return this.pressedKeyboardKeys.includes(keyCode);
-    }
-
     addPlugin(plugin) {
-        this.plugins.push(plugin);
-    }
-
-    updateActionsState(actionName, pluginName, actionState) {
-        const action = this.actions[actionName];
-
-        if (actionState) {
-            if (!action.activeBy.includes(pluginName)) {
-                action.activeBy.push(pluginName);
-
-                if (action.enabled && !action.active) {
-                    this.target.dispatchEvent(new CustomEvent(controller.ACTION_ACTIVATED, { detail: actionName }))
-                }
-
-                action.active = true;
-            }
-        } else {
-            action.activeBy.splice(action.activeBy.indexOf(pluginName), 1)
-
-            if (action.activeBy.length === 0) {
-                action.active = false;
-
-                if (action.enabled) {
-                    this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }))
-                }
-            }
-        }
+        this.plugins.push({ instance: plugin, binded: false });
+        this._bindPluginsInputs();
     }
 }
