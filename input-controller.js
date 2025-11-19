@@ -103,11 +103,11 @@ class InputController {
                 action.activeBy.splice(action.activeBy.indexOf(pluginName), 1)
 
                 if (action.activeBy.length === 0) {
-                    action.active = false;
-
-                    if (action.enabled) {
+                    if (action.enabled && action.active) {
                         this.target.dispatchEvent(new CustomEvent(controller.ACTION_DEACTIVATED, { detail: actionName }));
                     }
+
+                    action.active = false;
                 }
             }
         }
